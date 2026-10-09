@@ -1,0 +1,33 @@
+# Design example only. This is intentionally incomplete and non-operational.
+# Future preflight must reject missing required fields before activating devices.
+schema_version = 1
+mode = "hardware"
+input_provenance = "real"
+
+[device]
+config_id = "UNSET"
+os_version = "UNSET"
+camera_model = "UNSET"
+
+[gpio]
+numbering = "BCM" # Proposed convention; team must confirm assignments.
+# start_button_bcm, hx711_data_bcm, hx711_clock_bcm, led_bcm, buzzer_bcm: unset.
+
+[gas]
+module_model = "UNSET"
+acquisition_interface = "UNSET"
+calibration_id = "UNSET"
+# ADC channel/reference, warm-up, settling and reset protocol: unset.
+
+[weight]
+calibration_id = "UNSET"
+# capacity_g, tare_offset and scale: unset.
+
+[models]
+detector_artifact = "UNSET"
+classifier_artifact = "UNSET"
+feature_schema = "UNSET"
+
+[presentation]
+backend = "UNSET"
+# Display interface/address and output patterns: unset.

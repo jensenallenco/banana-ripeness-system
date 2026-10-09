@@ -1,0 +1,1 @@
+acquisition_id,bundle_id,session_id,captured_at_utc,sensor_window_start_utc,sensor_window_end_utc,image_path,sensor_trace_path,gas_response_value,gas_response_unit,weight_g,ripeness_stage,spoilage_status,labeler_id,label_protocol_version,hardware_config_id,calibration_id,is_synthetic,notes

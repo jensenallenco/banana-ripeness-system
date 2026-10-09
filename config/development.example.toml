@@ -1,0 +1,14 @@
+# Design example only. Phase 1 will implement and validate its schema.
+schema_version = 1
+mode = "development"
+input_provenance = "synthetic"
+prediction_policy = "unavailable_without_model"
+
+[presentation]
+backend = "console"
+
+[logging]
+enabled = true
+directory = "runs"
+
+# No model files, sensor values, or trained predictions are supplied.
