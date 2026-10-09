@@ -1,6 +1,6 @@
 # Implementation roadmap
 
-Phases 0 and 1 are complete. The portable manifest/replay portion of Phase 2 is complete; hardware-dependent Phase 2 work remains planned.
+Phases 0 and 1 are complete. The portable manifest/replay portion of Phase 2 and explicit-region visual-feature portion of Phase 3 are complete; hardware- and model-dependent work remains planned.
 
 ## Phase 0 — Repository brief
 
@@ -27,6 +27,8 @@ Portable portion completed 2026-10-09: added a non-mutating CSV manifest validat
 Integrate the trained detector after format/runtime selection. Implement and version the color/texture feature extractor and fusion rules. Validate detection/crops and document multi-bundle/no-bundle handling.
 
 Complete when a supplied model executes locally, visual extraction is repeatable, and training/runtime share the same ordered feature schema. Benchmark on Pi before selecting a deployment runtime as final.
+
+Portable slice completed 2026-10-09: added the detector interface (without a detector implementation), validated explicit banana-region contract, and OpenCV `visual-v1` extraction with an ordered, documented color/texture schema. Synthetic-image tests verify deterministic region-only behavior and invalid-input rejection. The CLI can display the schema and extract values from a caller-provided region while reporting `detection=not_run predictions=none`. This does not complete Phase 3: a trained detector artifact/runtime, real detection/crop validation, feature evaluation on real data, sensor fusion, and Pi benchmarks remain blocked by D06–D07 and hardware/data handoff.
 
 ## Phase 4 — Supervised training and evaluation
 

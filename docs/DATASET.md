@@ -50,6 +50,18 @@ Fit learned preprocessing only on training data. Exclude bundle/session IDs, lab
 
 ## Feature registry
 
-Before training, commit an ordered feature schema containing each feature name, unit, extraction/aggregation rule, and version. Color and texture methods are not specified in the paper; select them during Phase 3. Record sensor normalization and calibration provenance. Reject incompatible models or feature schemas at inference.
+The portable Phase 3 implementation establishes the following initial visual-only schema. It is an engineering baseline, not evidence that these values predict ripeness or spoilage. Training and runtime must use this exact implementation and verify `schema_version = visual-v1`; any change requires a new schema version and retraining.
+
+| Position | Name | Unit | Extraction and preprocessing |
+| --- | --- | --- | --- |
+| 1 | `hue_mean_deg` | degrees | Mean OpenCV HSV hue from an explicit BGR crop, multiplied by 2 (OpenCV hue range 0–179). |
+| 2 | `saturation_mean_fraction` | fraction | Mean HSV saturation divided by 255. |
+| 3 | `value_mean_fraction` | fraction | Mean HSV value divided by 255. |
+| 4 | `gray_stddev_fraction` | fraction | Population standard deviation of OpenCV grayscale intensity divided by 255. |
+| 5 | `laplacian_variance_normalized` | fraction_squared | Population variance of the `CV_64F` grayscale Laplacian, divided by 255². |
+
+Input must be a non-empty three-channel `uint8` BGR image (OpenCV convention) and a caller-supplied in-bounds integer `x,y,width,height` crop. The original image is not changed. There is no background removal, pixel mask, color correction, illumination normalization, crop expansion, detector output, feature fusion, or classifier in this slice. Hue's ordinary arithmetic mean is retained as a simple initial baseline; its circular-statistics limitations must be evaluated on real data before claiming it is suitable.
+
+Record sensor normalization and calibration provenance when sensor fusion is specified. Reject incompatible models or feature schemas at inference.
 
 Preserve raw files unchanged. Keep datasets outside source control and put small synthetic fixtures in a clearly named test location. Store real-data versions, file checksums, split assignments, and collection/calibration metadata in the controlled dataset handoff.

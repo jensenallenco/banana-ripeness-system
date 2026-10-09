@@ -44,6 +44,19 @@ Phase 1 confirms that model availability alone is insufficient for prediction. P
 
 The validator intentionally does not set an acquisition timing tolerance, gas-response unit vocabulary, trace aggregation rule, calibration acceptance threshold, or labeling rubric; D03–D05 remain the authority for those decisions. D01–D04 also still block real camera/sensor/button adapters and component diagnostics. The current fixture is a portable software test only.
 
+## Portable Phase 3 decisions (2026-10-09)
+
+| Decision | Rationale and affected scope |
+| --- | --- |
+| Add `opencv-python-headless` and require a `uint8` BGR image at the feature boundary. | Matches OpenCV's standard in-memory convention while avoiding GUI requirements in development. Pi packaging remains unverified. |
+| Define `BananaDetector` as an interface that returns regions only, without a universal confidence field. | A score convention must come from the confirmed detector artifact/runtime; no synthetic detection or confidence is emitted. |
+| Use explicit caller-provided in-bounds `x,y,width,height` regions for `visual-v1`. | Keeps detection separate from feature extraction and avoids fabricating crops before a real detector exists. |
+| Start `visual-v1` with five normalized HSV/grayscale/Laplacian summary values. | Provides a small deterministic baseline that is easy to version and reuse. It is not a validated feature-selection result and must be re-evaluated on real grouped data. |
+
+## Phase 3 unresolved dependencies
+
+D07 still blocks detector selection, serialization, artifact loading, local runtime compatibility, class handling, confidence convention, and real region validation. D05–D06 still block feature selection/evaluation against approved labels and matched observations. The team must also establish whether lighting/color correction or a crop/mask policy is required before research use. No feature values from synthetic fixtures are experimental results.
+
 ## Team questions and dependent work
 
 | ID | Missing answer | Owner | Blocks |

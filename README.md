@@ -1,6 +1,6 @@
 # Cavendish Banana Ripeness and Spoilage System
 
-Portable Phase 1 foundation plus the portable portion of Phase 2 for the Raspberry Pi research prototype. It includes a typed Python scan workflow, validated development configuration, explicit synthetic fixtures, console presentation, a non-mutating dataset-manifest validator/replay workflow, and contract tests. It does **not** contain trained models, detector/classifier inference, or validated hardware drivers.
+Portable Phases 1–2 plus the portable image-processing slice of Phase 3 for the Raspberry Pi research prototype. It includes a typed Python scan workflow, validated development configuration, explicit synthetic fixtures, console presentation, non-mutating dataset-manifest validation/replay, and versioned OpenCV region feature extraction. It does **not** contain trained detector/classifier inference or validated hardware drivers.
 
 The research workflow is camera capture → banana-bundle detection using a Roboflow-trained model → OpenCV color and texture features → fusion with MQ-135 gas response and load-cell weight → Scikit-learn Random Forest → Stage 1–7 and Good/Spoiled outputs. Inference must run locally on a Raspberry Pi 4.
 
@@ -33,13 +33,24 @@ The research workflow is camera capture → banana-bundle detection using a Robo
 
    The fixture's blank labels are valid during collection, but it is reported as unsuitable for supervised training because it is synthetic and lacks real calibration provenance.
 
-6. Run the contracts:
+6. Inspect the visual feature schema and extract features from an explicit supplied region. This does not detect bananas or predict any label:
+
+   ```sh
+   .venv/bin/banana-system features schema
+   .venv/bin/banana-system features extract \
+     --image data/fixtures/synthetic/images/synthetic-bundle-001.ppm \
+     --region 0,0,1,1
+   ```
+
+   `visual-v1` outputs ordered color/texture values from the provided BGR region only. It prints `detection=not_run predictions=none`; the synthetic input is not a research result.
+
+7. Run the contracts:
 
    ```sh
    .venv/bin/python -m pytest
    ```
 
-7. Ask the research team for the items in [docs/HARDWARE.md](docs/HARDWARE.md) and [docs/DECISIONS.md](docs/DECISIONS.md) while independent software work proceeds.
+8. Ask the research team for the items in [docs/HARDWARE.md](docs/HARDWARE.md) and [docs/DECISIONS.md](docs/DECISIONS.md) while independent software work proceeds.
 
 ## Repository guide
 
@@ -74,5 +85,9 @@ The development adapter is deliberately the only runnable adapter. It provides o
 ## Portable collection boundary
 
 `collection validate` checks manifest identity fields, relative input paths, UTC timestamps, finite sensor values, units, labels, and provenance without modifying or copying source inputs. Blank labels are permitted for collection. The report separates collection validity from supervised-training suitability; synthetic, incomplete, or provenance-incomplete records are never presented as training-ready. `collection replay` only lists validated source records and states `predictions=none`.
+
+## Portable visual-feature boundary
+
+`features extract` requires an existing image and caller-provided `x,y,width,height` region. It validates a non-empty `uint8` BGR image and in-bounds integer region before extracting the versioned `visual-v1` vector. It does not include a detector, choose a banana region, return confidence, invoke a model, or classify anything. See [docs/DATASET.md](docs/DATASET.md) for the exact ordered feature registry.
 
 No remote Git host has been configured. The ZIP is a portable starter; initialize Git after extraction if necessary. No software license has been selected; confirm ownership and sharing terms before public release.

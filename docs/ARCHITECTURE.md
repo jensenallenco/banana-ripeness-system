@@ -1,6 +1,6 @@
 # Software architecture
 
-Status: Phase 1 is implemented. The portable manifest validation/replay portion of Phase 2 is implemented. Detection, feature extraction, classification, persistent result storage, real collection adapters, training, and hardware adapters remain proposed.
+Status: Phase 1 is implemented. The portable manifest validation/replay portion of Phase 2 and the explicit-region visual-feature portion of Phase 3 are implemented. Real detection, classification, persistent result storage, real collection adapters, training, and hardware adapters remain proposed.
 
 ## Modules and contracts
 
@@ -24,6 +24,10 @@ Status: Phase 1 is implemented. The portable manifest validation/replay portion 
 ### Portable Phase 2 boundary
 
 `banana_system.collection` reads a CSV manifest and validates it without mutating the manifest, image, or raw sensor-trace inputs. It resolves only relative paths under an explicit dataset root, validates UTC timestamps and sensor values, and retains each valid row's original string values. Collection validity and supervised-training suitability are separate results: labels may be blank during collection, while synthetic provenance, incomplete labels, missing raw trace, label provenance, or calibration provenance block training suitability. Replay returns validated records for console inspection only and has no detection or prediction dependency.
+
+### Portable Phase 3 boundary
+
+`banana_system.detection` defines a local `BananaDetector` interface, `Detection`, and `BananaRegion`; no implementation, artifact loader, confidence convention, or fallback detector is supplied. `banana_system.features` validates a supplied `uint8` BGR image and an in-bounds region, then extracts the ordered `visual-v1` vector using OpenCV. It neither selects a region nor calls a detector. The feature extractor is a standalone function intended to be called unchanged by later training and inference code. The feature schema version must be validated against a future model artifact before prediction.
 
 Use `src/banana_system/` for the application package. Add subpackages when their implementation begins; avoid empty abstractions for every possible future device.
 

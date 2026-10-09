@@ -2,7 +2,7 @@
 
 ## Current state
 
-Phase 1 provides a runnable standard-library Python package, `pyproject.toml`, a validated development TOML configuration, a console CLI, and pytest contract tests. The portable Phase 2 portion adds a CSV manifest validator and synthetic replay command. There is no detector/classifier runtime, trained artifact, hardware driver, service, or dependency lockfile. The development TOML is consumed by the application; the hardware TOML remains intentionally non-operational.
+Phase 1 provides a runnable Python package, `pyproject.toml`, a validated development TOML configuration, a console CLI, and pytest contract tests. The portable Phase 2 portion adds a CSV manifest validator and synthetic replay command. The portable Phase 3 slice adds OpenCV visual feature extraction from explicit regions. There is no detector/classifier runtime, trained artifact, hardware driver, service, or dependency lockfile. The development TOML is consumed by the application; the hardware TOML remains intentionally non-operational.
 
 ## Proposed setup
 
@@ -19,13 +19,15 @@ A recent supported 64-bit Raspberry Pi OS is a proposed target, not a confirmed 
 
 ## Phase 1 environment work
 
-Phase 1 supports Python `>=3.11,<3.15` and uses a `src` package. The runtime has no third-party dependencies; pytest is an optional development dependency. OpenCV and Scikit-learn are intentionally deferred until their documented phases need them. This Mac development range is not a Pi compatibility confirmation; the team must still provide the target OS/Python details before device dependencies are selected.
+The portable foundation supports Python `>=3.11,<3.15` and uses a `src` package. `opencv-python-headless` is now a runtime dependency for `visual-v1`; pytest is an optional development dependency. Scikit-learn remains deferred until supervised training is implemented. This Mac dependency resolution is not a Pi compatibility confirmation; the team must still provide target OS/Python details and validate an OpenCV build for the Pi before device deployment.
 
 Use a project virtual environment and documented commands. Keep real configuration in ignored files; example configurations contain no credentials, guessed pins, or calibration values. Do not introduce Docker as a requirement for GPIO/camera operation.
 
 Use the commands in the repository README. `banana-system scan --config config/development.example.toml` is a synthetic-only workflow and is expected to report `unavailable` until real model artifacts and their schema/runtime contracts are implemented. It must not be used as device or research validation.
 
 `banana-system collection validate` and `collection replay` need only a CSV manifest and its local input files. They preserve those inputs and are intentionally model-free. The provided fixture demonstrates metadata validation/replay, not camera, sensor, calibration, or collection-protocol correctness.
+
+`banana-system features schema` prints the immutable visual registry. `features extract --image <path> --region x,y,width,height` reads one local image with OpenCV and returns features for that exact region. It does not load a detector, decide whether the image contains a banana, or produce a prediction.
 
 ## Deployment approach
 
