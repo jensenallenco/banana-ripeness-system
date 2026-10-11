@@ -6,12 +6,19 @@ import base64
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from threading import Thread
 
 import cv2
 import numpy as np
 from numpy.typing import NDArray
 
 from .camera import CameraAdapter, CaptureResult, default_camera_adapter
+from .detection import (
+    StageDetection,
+    StageDetector,
+    annotate_stage_detections,
+    default_stage_detector,
+)
 
 
 class ImageLoadError(ValueError):
@@ -51,7 +58,12 @@ class DesktopApplication:
     """Tk UI kept separate from image and camera contracts for Mac/Pi portability."""
 
     def __init__(
-        self, root: object, camera: CameraAdapter, capture_directory: Path, initial_preview: PreviewImage | None = None
+        self,
+        root: object,
+        camera: CameraAdapter,
+        capture_directory: Path,
+        initial_preview: PreviewImage | None = None,
+        detector: StageDetector | None = None,
     ) -> None:
         import tkinter as tk
         from tkinter import filedialog, ttk
@@ -60,9 +72,11 @@ class DesktopApplication:
         self._filedialog = filedialog
         self._root = root
         self._camera = camera
+        self._detector = detector or default_stage_detector()
         self._capture_directory = capture_directory.expanduser().resolve()
         self._preview_photo: object | None = None
         self._image_path: Path | None = None
+        self._current_preview: PreviewImage | None = None
 
         root.title("Cavendish Banana System")
         root.geometry("800x480")
@@ -92,16 +106,21 @@ class DesktopApplication:
         ttk.Button(controls, text="Open photograph", command=self._open_photograph).pack(side="left")
         self._capture_button = ttk.Button(controls, text="Capture", command=self._capture)
         self._capture_button.pack(side="left", padx=(8, 0))
+        self._analyze_button = ttk.Button(controls, text="Analyze", command=self._analyze)
+        self._analyze_button.pack(side="left", padx=(8, 0))
 
         self._camera_status = tk.StringVar()
         self._image_location = tk.StringVar(value="Image location: no image selected")
         self._save_location = tk.StringVar(value=f"Capture destination: {self._capture_directory}")
         self._notice = tk.StringVar(value="Sensors: not connected — image capture is independent.")
+        self._analysis_status = tk.StringVar(value=f"Image-based stages: {self._detector.status()}")
         self._capture_in_progress = False
+        self._analysis_in_progress = False
         self._apply_camera_status()
         ttk.Label(frame, textvariable=self._camera_status, style="Status.TLabel", wraplength=760).pack(anchor="w", pady=(8, 1))
         ttk.Label(frame, textvariable=self._notice, style="Status.TLabel", wraplength=760).pack(anchor="w", pady=1)
-        ttk.Label(frame, text="Model: unavailable — no prediction is generated.", style="Status.TLabel").pack(anchor="w", pady=1)
+        ttk.Label(frame, textvariable=self._analysis_status, style="Status.TLabel", wraplength=760).pack(anchor="w", pady=1)
+        ttk.Label(frame, text="Spoilage and days-until-ripe: unavailable.", style="Status.TLabel").pack(anchor="w", pady=1)
         ttk.Label(frame, textvariable=self._image_location, style="Status.TLabel", wraplength=760).pack(anchor="w", pady=(6, 1))
         ttk.Label(frame, textvariable=self._save_location, style="Status.TLabel", wraplength=760).pack(anchor="w", pady=1)
 
@@ -116,9 +135,13 @@ class DesktopApplication:
     def _apply_camera_status(self) -> None:
         status = self._camera.status()
         self._camera_status.set(f"Camera: {status.message}")
-        self._capture_button.state(["!disabled"] if status.available and not self._capture_in_progress else ["disabled"])
+        busy = self._capture_in_progress or self._analysis_in_progress
+        self._capture_button.state(["!disabled"] if status.available and not busy else ["disabled"])
+        self._analyze_button.state(["!disabled"] if self._current_preview is not None and not busy else ["disabled"])
 
     def _open_photograph(self) -> None:
+        if self._capture_in_progress or self._analysis_in_progress:
+            return
         selected = self._filedialog.askopenfilename(
             title="Open development photograph",
             filetypes=[("Images", "*.bmp *.jpeg *.jpg *.png *.ppm *.tif *.tiff"), ("All files", "*.*")],
@@ -136,18 +159,22 @@ class DesktopApplication:
         self._capture_in_progress = True
         self._capture_button.state(["disabled"])
         self._notice.set("Capturing image…")
+        captured_preview_ready = False
         try:
             self._capture_directory.mkdir(parents=True, exist_ok=True)
             filename = datetime.now(timezone.utc).strftime("capture-%Y%m%dT%H%M%S%fZ.jpg")
             destination = self._capture_directory / filename
             result = self._camera.capture(destination)
             self._show_image(load_preview_image(result.path), captured=True)
+            captured_preview_ready = True
             self._notice.set(self._capture_notice(result))
         except (OSError, RuntimeError, ImageLoadError) as exc:
             self._notice.set(f"Capture unavailable: {exc}")
         finally:
             self._capture_in_progress = False
             self._apply_camera_status()
+        if captured_preview_ready:
+            self._start_analysis()
 
     @staticmethod
     def _capture_notice(result: CaptureResult) -> str:
@@ -155,6 +182,8 @@ class DesktopApplication:
         return f"Captured JPEG. Requested exposure: {result.requested_exposure_us} µs; camera metadata: {actual}."
 
     def _show_image(self, preview: PreviewImage, captured: bool) -> None:
+        self._current_preview = preview
+        self._clear_analysis()
         self._preview_photo = self._tk.PhotoImage(data=preview_png_data(preview.bgr), format="PNG")
         self._preview_label.configure(image=self._preview_photo, text="")
         self._image_path = preview.source_path
@@ -163,6 +192,56 @@ class DesktopApplication:
             self._save_location.set(f"Saved image location: {preview.source_path}")
         else:
             self._notice.set("Development photograph loaded. It has not been copied or analyzed.")
+        self._apply_camera_status()
+
+    def _clear_analysis(self) -> None:
+        self._analysis_status.set(f"Image-based stages: {self._detector.status()} Select Analyze for this image.")
+
+    def _analyze(self) -> None:
+        self._start_analysis()
+
+    def _start_analysis(self) -> None:
+        if self._current_preview is None or self._capture_in_progress or self._analysis_in_progress:
+            return
+        self._analysis_in_progress = True
+        self._analysis_status.set("Image-based stages: analyzing…")
+        self._apply_camera_status()
+        preview = self._current_preview
+        Thread(target=self._run_analysis, args=(preview,), daemon=True).start()
+
+    def _run_analysis(self, preview: PreviewImage) -> None:
+        try:
+            detections = self._detector.detect(preview.bgr)
+            annotated = annotate_stage_detections(preview.bgr, detections)
+            self._root.after(0, self._finish_analysis, preview, detections, annotated, None)
+        except RuntimeError as exc:
+            self._root.after(0, self._finish_analysis, preview, (), None, str(exc))
+
+    def _finish_analysis(
+        self,
+        preview: PreviewImage,
+        detections: tuple[StageDetection, ...],
+        annotated: NDArray[np.uint8] | None,
+        error: str | None,
+    ) -> None:
+        self._analysis_in_progress = False
+        if preview is not self._current_preview:
+            self._apply_camera_status()
+            return
+        if error is not None:
+            self._analysis_status.set(f"Image-based stages unavailable: {error}")
+        elif not detections:
+            self._analysis_status.set("Image-based stages: no detections.")
+        else:
+            assert annotated is not None
+            self._preview_photo = self._tk.PhotoImage(data=preview_png_data(annotated), format="PNG")
+            self._preview_label.configure(image=self._preview_photo, text="")
+            details = "; ".join(
+                f"{item.label} {item.confidence:.1%} ({item.region.x},{item.region.y},{item.region.width},{item.region.height})"
+                for item in detections
+            )
+            self._analysis_status.set(f"Image-based detections ({len(detections)}): {details}")
+        self._apply_camera_status()
 
     def _close(self) -> None:
         self._camera.close()

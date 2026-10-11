@@ -12,6 +12,7 @@ dependencies = ["opencv-python-headless>=4.10,<5"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<9"]
+yolo = ["ultralytics==8.4.175"]
 
 [project.scripts]
 banana-system = "banana_system.cli:main"

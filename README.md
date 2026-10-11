@@ -20,6 +20,12 @@ Python `>=3.11,<3.15` is supported. OpenCV is a runtime dependency; pytest is a 
 
 Homebrew Python may need the matching `python-tk` formula.
 
+To enable local stage-only YOLO analysis, install the optional runtime pinned to the supplied checkpoint metadata:
+
+```sh
+.venv/bin/python -m pip install -e '.[dev,yolo]'
+```
+
 ## Usage
 
 ```sh
@@ -47,6 +53,8 @@ Homebrew Python may need the matching `python-tk` formula.
 ```
 
 The desktop screen can open existing local photographs without copying or analyzing them. On a Pi with the confirmed Picamera2 stack, it initializes the camera, captures a unique UTC-named JPEG under `--capture-directory`, reloads that saved file for preview, and shows its location. On a Mac or an unavailable/busy camera it remains usable for photo preview and shows an explicit camera state. Sensors and model output remain unavailable by design.
+
+When `models/banana_yolo26_best.pt` and `ultralytics==8.4.175` are available, **Analyze** runs the local detector for image-based `stage 3`, `stage 5`, and `stage 7` observations. It verifies checkpoint/runtime version and class mapping before inference, draws every returned box, and shows label, confidence, and coordinates. Multiple detections are not reduced to one bundle result. Spoilage and days-until-ripe remain unavailable.
 
 ### Pi camera launch
 
@@ -102,7 +110,7 @@ Identity, timestamps, provenance, hardware configuration, and calibration IDs ar
 
 ## Current capabilities and remaining work
 
-Implemented: portable configuration, synthetic scan behavior, desktop photo preview and Picamera2 JPEG capture, collection validation/replay, explicit-region visual features, and multimodal fusion.
+Implemented: portable configuration, synthetic scan behavior, desktop photo preview and Picamera2 JPEG capture, optional local stage-only YOLO analysis, collection validation/replay, explicit-region visual features, and multimodal fusion.
 
 Still required: on-device camera acceptance; confirmed sensor interfaces; detector artifact/runtime; labels and matched real observations; model training/evaluation; model artifact loading; physical display/indicator behavior; and Pi/offline validation. See [docs/HARDWARE.md](docs/HARDWARE.md) and [docs/DATASET.md](docs/DATASET.md).
 

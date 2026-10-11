@@ -51,6 +51,15 @@ python3 -c 'import platform; from picamera2 import Picamera2; import cv2; print(
 PYTHONPATH=src python3 -m banana_system.cli desktop --capture-directory captures
 ```
 
+For optional stage-only analysis, the selected Python environment must also have the supplied local checkpoint and a Pi-compatible `ultralytics==8.4.175`/PyTorch installation. Verify before launch; do not download replacement weights:
+
+```sh
+python3 -c 'import ultralytics, torch; assert ultralytics.__version__ == "8.4.175"; print(torch.__version__)'
+test -f models/banana_yolo26_best.pt
+```
+
+This compatibility check is documented for the Pi but has not been run on its hardware. The checkpoint supports only `stage 3`, `stage 5`, and `stage 7`; it does not provide spoilage or days-until-ripe.
+
 This is intentionally not a hardware fallback: if Picamera2 or a camera is unavailable, Capture is disabled and the existing-photo workflow remains available. The adapter configures a still stream at 800×480, requests `AeEnable=False` and `ExposureTime=8333`, writes a unique JPEG, then the desktop previews that saved JPEG and displays its path. `8333` µs is a requested control only; record the `ExposureTime` value reported in capture metadata, or its absence.
 
 For acceptance on the Pi, verify: camera status is available; each Capture writes a distinct timestamped JPEG under `captures/`; preview and displayed saved location match; repeated captures work without concurrent captures; camera-unavailable/busy and capture-failure messages are explicit; closing the window releases the camera; opening an existing image still works; sensors and model remain explicitly unavailable; and no prediction is shown. Use a color reference photograph or chart to confirm the saved JPEG has expected colors. Record commit, OS/Python/architecture, camera model, configuration/calibration IDs, command, output path, reported exposure metadata, and sanitized errors. This remains pending device verification.
