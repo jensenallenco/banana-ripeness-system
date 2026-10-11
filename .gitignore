@@ -24,6 +24,5 @@ data/raw/
 data/processed/
 data/private/
 models/*
-!models/README.md
 !models/metadata/
 !models/metadata/**

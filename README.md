@@ -1,118 +1,70 @@
 # Cavendish Banana Ripeness and Spoilage System
 
-Portable Phases 1–2 plus the visual-feature and sensor-fusion slices of Phase 3 for the Raspberry Pi research prototype. It includes a typed Python scan workflow, validated development configuration, explicit synthetic fixtures, console presentation, non-mutating dataset-manifest validation/replay, versioned OpenCV region feature extraction, and strict multimodal fusion. It does **not** contain trained detector/classifier inference or validated hardware drivers.
+Local research prototype for Cavendish banana bundles on Raspberry Pi 4. The intended pipeline is camera capture → local bundle detection → OpenCV visual features → gas-response and mass fusion → Scikit-learn Random Forest outputs for Stage 1–7 and Good/Spoiled. Detection and classification remain separate.
 
-The research workflow is camera capture → banana-bundle detection using a Roboflow-trained model → OpenCV color and texture features → fusion with MQ-135 gas response and load-cell weight → Scikit-learn Random Forest → Stage 1–7 and Good/Spoiled outputs. Inference must run locally on a Raspberry Pi 4.
+The repository is usable for Mac development without GPIO, a camera, sensors, models, or real data. It does not contain a trained detector/classifier, a real Pi camera adapter, or research results.
 
-## Start here
+## Install
 
-1. Open this folder as the repository root in Codex.
-2. Read [AGENTS.md](AGENTS.md) and [docs/PROJECT.md](docs/PROJECT.md).
-3. Create a virtual environment and install the development package:
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -e '.[dev]'
+```
 
-   ```sh
-   python3 -m venv .venv
-   .venv/bin/python -m pip install --upgrade pip
-   .venv/bin/python -m pip install -e '.[dev]'
-   ```
+Python `>=3.11,<3.15` is supported. OpenCV is a runtime dependency; pytest is a development dependency. The desktop UI uses Tk:
 
-4. Run the portable development scan:
+```sh
+.venv/bin/python -c 'import tkinter; print(tkinter.TkVersion)'
+```
 
-   ```sh
-   .venv/bin/banana-system scan --config config/development.example.toml
-   ```
+Homebrew Python may need the matching `python-tk` formula.
 
-   The command exits successfully with `status: unavailable` because no model artifacts are supplied. It prints `provenance: synthetic` and a notice that the fixture is not a research result; it never emits a ripeness stage or spoilage label.
+## Usage
 
-5. Validate and replay the synthetic collection fixture. These commands never invoke a model or produce predictions:
+```sh
+# Synthetic scan: deliberately unavailable because models are absent.
+.venv/bin/banana-system scan --config config/development.example.toml
 
-   ```sh
-   .venv/bin/banana-system collection validate --manifest data/fixtures/synthetic/observations.csv
-   .venv/bin/banana-system collection replay --manifest data/fixtures/synthetic/observations.csv
-   ```
+# Validate/replay the synthetic collection fixture; no model is invoked.
+.venv/bin/banana-system collection validate --manifest data/fixtures/synthetic/observations.csv
+.venv/bin/banana-system collection replay --manifest data/fixtures/synthetic/observations.csv
 
-   The fixture's blank labels are valid during collection, but it is reported as unsuitable for supervised training because it is synthetic and lacks real calibration provenance.
+# Inspect or extract visual-v1 from a caller-supplied region.
+.venv/bin/banana-system features schema
+.venv/bin/banana-system features extract \
+  --image data/fixtures/synthetic/images/synthetic-bundle-001.ppm \
+  --region 0,0,1,1
 
-6. Inspect the visual feature schema and extract features from an explicit supplied region. This does not detect bananas or predict any label:
+# Demonstrate synthetic visual/sensor fusion; no prediction is produced.
+.venv/bin/banana-system fusion demo
 
-   ```sh
-   .venv/bin/banana-system features schema
-   .venv/bin/banana-system features extract \
-     --image data/fixtures/synthetic/images/synthetic-bundle-001.ppm \
-     --region 0,0,1,1
-   ```
+# Open the desktop image-preview screen.
+.venv/bin/banana-system desktop --image /path/to/development-photo.jpg
 
-   `visual-v1` outputs ordered color/texture values from the provided BGR region only. It prints `detection=not_run predictions=none`; the synthetic input is not a research result.
+# Run checks.
+.venv/bin/python -m pytest
+```
 
-7. Run the synthetic multimodal fusion demonstration:
+The desktop screen can open existing local photographs without copying or analyzing them. It shows the image location and a future capture destination. Camera Capture is disabled until the team supplies a confirmed Pi camera setup; sensors and model output remain unavailable by design.
 
-   ```sh
-   .venv/bin/banana-system fusion demo
-   ```
+## Architecture
 
-   This validates the synthetic fixture, extracts `visual-v1`, and returns ordered `multimodal-v1` values. It retains synthetic provenance, reports `training_ineligibility: synthetic_provenance`, and prints `predictions=none`.
-
-8. Run the contracts:
-
-   ```sh
-   .venv/bin/python -m pytest
-   ```
-
-9. Launch the desktop image-preview screen. It loads existing photographs on macOS and has no sensor/model dependency:
-
-   ```sh
-   .venv/bin/python -c 'import tkinter; print(tkinter.TkVersion)'
-   .venv/bin/banana-system desktop --image /path/to/development-photo.jpg
-   ```
-
-   The first command checks that the selected Python distribution includes Tk. Homebrew Python installations may require the matching `python-tk` formula. Use **Open photograph** or `--image` to load a local image; its original file is not copied or analyzed. The screen shows the file location and planned capture destination.
-
-10. Ask the research team for the items in [docs/HARDWARE.md](docs/HARDWARE.md) and [docs/DECISIONS.md](docs/DECISIONS.md) while independent software work proceeds.
-
-## Repository guide
-
-| Path | Purpose |
+| Area | Current responsibility |
 | --- | --- |
-| `AGENTS.md` | Instructions Codex reads when working in this repository |
-| `docs/PROJECT.md` | Objectives, scope, responsibilities, and evidence |
-| `docs/ARCHITECTURE.md` | Module boundaries and scan behavior |
-| `docs/DATASET.md` | Matched images, sensor readings, labeling, and splits |
-| `docs/HARDWARE.md` | Hardware handoff and configuration requirements |
-| `docs/DEVELOPMENT.md` | Mac development and Raspberry Pi deployment approach |
-| `docs/TESTING.md` | Software, device, and research evaluation criteria |
-| `docs/ROADMAP.md` | Phases and concrete completion criteria |
-| `docs/DECISIONS.md` | Confirmed choices, proposed defaults, and open questions |
-| `config/` | Non-operational configuration examples |
-| `data/templates/` | Header-only collection template; no experimental data |
-| `data/fixtures/synthetic/` | Explicit synthetic manifest, image, and trace for development validation/replay |
-| `src/banana_system/` | Portable Python package and development adapters |
-| `tests/`, `scripts/` | Contract tests and future training/evaluation utilities |
-| `models/` | Artifact metadata guidance; model weights stay outside Git |
+| `config`, `contracts`, `orchestrator` | Validated development mode, typed outcomes, cancellation, cleanup, explicit unavailable results. |
+| `acquisition`, `camera`, `desktop`, `presentation` | Synthetic acquisition, camera boundary, desktop preview, and console UI. Hardware adapters are not implemented. |
+| `collection` | Non-mutating CSV manifest validation and replay. |
+| `detection` | Detector and banana-region contracts only; no detector implementation. |
+| `features` | OpenCV `visual-v1` extraction from an explicit BGR region. |
+| `fusion` | Ordered `multimodal-v1` fusion of visual values, raw gas response, and mass in grams. |
 
-## Ownership
+Identity, timestamps, provenance, hardware configuration, and calibration IDs are metadata—not predictive features. Training and runtime must share the same versioned feature extractor and validate schema compatibility before prediction.
 
-The research team supplies and assembles hardware, collects images and synchronized measurements, establishes labels, and performs device testing. The remote developer handles application code and software integration, with Random Forest training dependent on receiving usable labeled data. Roboflow detector training ownership still needs confirmation.
+## Current capabilities and remaining work
 
-The paper's 95% accuracy is a research target. This starter makes no accuracy claim.
+Implemented: portable configuration, synthetic scan behavior, desktop image preview, collection validation/replay, explicit-region visual features, and multimodal fusion.
 
-## Phase 1 boundary
+Still required: confirmed Pi camera and sensor interfaces; camera capture adapter; detector artifact/runtime; labels and matched real observations; model training/evaluation; model artifact loading; physical display/indicator behavior; and Pi/offline validation. See [docs/HARDWARE.md](docs/HARDWARE.md) and [docs/DATASET.md](docs/DATASET.md).
 
-The development adapter is deliberately the only runnable adapter. It provides one synthetic image reference and synthetic gas-response/weight fixture values, all marked with synthetic provenance. Hardware configuration is rejected rather than falling back to these fixtures. A missing local model produces an explicit `unavailable` outcome, not an invented detection, Stage, or Good/Spoiled result.
-
-## Portable collection boundary
-
-`collection validate` checks manifest identity fields, relative input paths, UTC timestamps, finite sensor values, units, labels, and provenance without modifying or copying source inputs. Blank labels are permitted for collection. The report separates collection validity from supervised-training suitability; synthetic, incomplete, or provenance-incomplete records are never presented as training-ready. `collection replay` only lists validated source records and states `predictions=none`.
-
-## Portable visual-feature boundary
-
-`features extract` requires an existing image and caller-provided `x,y,width,height` region. It validates a non-empty `uint8` BGR image and in-bounds integer region before extracting the versioned `visual-v1` vector. It does not include a detector, choose a banana region, return confidence, invoke a model, or classify anything. See [docs/DATASET.md](docs/DATASET.md) for the exact ordered feature registry.
-
-## Portable sensor-fusion boundary
-
-`fusion demo` uses the validated synthetic collection fixture to combine `visual-v1` values with the fixture's gas response and mass. `multimodal-v1` has a fixed order; gas units are retained as supplied and weight must already be in grams. Identity, timestamps, provenance, hardware configuration, and calibration IDs remain outside predictive values. No calibration, unit conversion, timing tolerance, detection, or prediction is applied.
-
-## Desktop image-capture boundary
-
-`banana-system desktop` is the first desktop screen: image preview, **Open photograph**, **Capture**, camera status, component availability, and source/capture locations. On a Mac it supports opening an existing local photograph for development without creating measurements or predictions. The Capture button is deliberately disabled until a confirmed Pi camera adapter exists. This repository contains no team camera code or confirmed OS/camera setup, so it cannot safely choose Picamera2, a command-line tool, settings, or a camera model on the team’s behalf. See [docs/HARDWARE.md](docs/HARDWARE.md) for the Pi handoff and verification procedure.
-
-No remote Git host has been configured. The ZIP is a portable starter; initialize Git after extraction if necessary. No software license has been selected; confirm ownership and sharing terms before public release.
+Synthetic fixtures are software tests only. They are marked synthetic, remain ineligible for supervised research training, and never establish performance or food-safety claims.

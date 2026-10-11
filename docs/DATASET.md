@@ -1,79 +1,60 @@
-# Dataset collection and handoff
+# Dataset, features, artifacts, and evaluation
 
-Status: the portable CSV validator and synthetic replay fixture are implemented. The team must still confirm labels, measurement protocol, column units, and real collection workflow before production collection. `data/templates/observations.csv` contains a header only.
+## Collection format
 
-## Identity and labels
+`data/templates/observations.csv` defines one row per acquisition. `bundle_id` identifies the same physical bundle across all views and dates; `acquisition_id` identifies one image and matched sensor window.
 
-`bundle_id` identifies the same physical bundle across angles, dates, and ripeness changes. `acquisition_id` identifies one image with its corresponding measurement window. Reusing a bundle on another day does not create an independent bundle. Track related/subdivided material when relevant so related samples cannot cross evaluation boundaries.
-
-The team supplies a written Stage 1–7 rubric, Good/Spoiled rubric, adjudication process, and mixed-ripeness bundle rule. Record labeler and label-protocol version. Unknown labels remain blank and are excluded from supervised training. A brown spot or Stage 7 is not automatically a Spoiled label.
-
-## Proposed observation fields
-
-| Fields | Meaning |
+| Fields | Requirement |
 | --- | --- |
-| `acquisition_id`, `bundle_id`, `session_id` | Unique observation, physical bundle, collection session |
-| `captured_at_utc`, `sensor_window_start_utc`, `sensor_window_end_utc` | ISO 8601 timestamps with UTC timezone; allow alignment checks |
-| `image_path`, `sensor_trace_path` | Paths relative to dataset root; retain original image and measurement trace |
-| `gas_response_value`, `gas_response_unit` | Recorded gas-response summary and explicit unit, such as ADC counts; do not mix units |
-| `weight_g` | Calibrated bundle mass in grams |
-| `ripeness_stage`, `spoilage_status` | Team-verified 1–7 and Good/Spoiled, independently labeled |
-| `labeler_id`, `label_protocol_version` | Label provenance |
-| `hardware_config_id`, `calibration_id` | Device/chamber settings and sensor calibration record |
-| `is_synthetic`, `notes` | `true`/`false` provenance and acquisition/label observations |
+| `acquisition_id`, `bundle_id`, `session_id` | Stable identifiers; acquisition IDs are unique within a manifest. |
+| `captured_at_utc`, `sensor_window_start_utc`, `sensor_window_end_utc` | ISO 8601 UTC timestamps. The validator rejects reversed sensor windows; protocol-defined alignment remains pending. |
+| `image_path`, `sensor_trace_path` | Relative paths under the dataset root; preserve original image and trace. |
+| `gas_response_value`, `gas_response_unit`, `weight_g` | Finite values with explicit gas-response unit and mass in grams. Do not convert gas output to ethylene without verified calibration. |
+| `ripeness_stage`, `spoilage_status` | Blank during collection or team-verified Stage 1–7 and Good/Spoiled. |
+| `labeler_id`, `label_protocol_version` | Required provenance when labels are supplied. |
+| `hardware_config_id`, `calibration_id` | Required for real training-ready measurements. |
+| `is_synthetic`, `notes` | Explicit provenance and observations. |
 
-One row describes one acquisition. The sensor summary and stability rule must be defined before training; record raw traces so different summaries can be audited. Do not pair a photograph with a different bundle's sensor data or silently reuse a stale reading. The acceptable timing window is pending the team's experimental protocol.
+Validate without modifying source inputs:
 
-## Current validator behavior
+```sh
+.venv/bin/banana-system collection validate --manifest path/to/observations.csv --dataset-root path/to/data
+.venv/bin/banana-system collection replay --manifest path/to/observations.csv --dataset-root path/to/data
+```
 
-`banana-system collection validate --manifest <path> [--dataset-root <path>]` is a non-mutating portable check. It requires all listed columns; validates stable identifier syntax and unique `acquisition_id` values; requires ISO 8601 UTC timestamps and a non-reversed sensor window; accepts only relative existing image/trace paths beneath the dataset root; and rejects non-finite gas/weight values, negative mass, absent gas-response units, malformed provenance, and invalid nonblank labels. It does not inspect, convert, rename, copy, calibrate, or otherwise alter original image and trace inputs.
+Blank labels are collection-valid but not suitable for supervised training. Synthetic records, missing raw traces, incomplete labels, or missing label/calibration provenance are also training-ineligible. The validator checks metadata completeness, not experimental validity or calibration quality.
 
-Blank ripeness/spoilage labels are valid collection records and receive a training-suitability warning rather than a validation error. A record is also unsuitable for supervised research training if it is synthetic or lacks raw trace, calibration/hardware, or supplied-label provenance. These checks establish metadata completeness only; they do not establish experimental validity, timing tolerance, calibration quality, or label quality. The synthetic fixture under `data/fixtures/synthetic/` demonstrates this workflow and must never be used as research evidence.
+## Labels and splits
 
-## What the team supplies
+The team supplies written Stage 1–7 and Good/Spoiled rubrics, label review/adjudication, and mixed-bundle rules. Stage 7 does not imply Spoiled.
 
-- Original images, bundle identities, collection timestamps, and reviewed labels.
-- Matched MQ-135 measurements and calibrated weight data, units, raw traces, and calibration/configuration records.
-- Roboflow project/version information, annotations, detector training/export ownership, and available model artifacts.
-- Stage/spoilage labeling criteria, mixed-bundle handling, chamber/lighting setup, and acquisition protocol.
-- Dataset inventory showing independent bundles and acquisitions per class, with access/storage agreed.
+Assign train, validation, and final-test membership by physical `bundle_id` before augmentation or model selection. Every view/time observation of a bundle stays in one group. Keep final-test groups out of detector training, feature selection, preprocessing fitting, and classifier tuning. Exclude IDs, labels, paths, dates, and synthetic flags from predictive features.
 
-Photographs and Roboflow annotations can support object detection, but alone do not supply the gas/weight features needed by the documented multimodal classifier.
+## Feature schemas
 
-## Splits and evaluation
-
-Assign training, validation, and test membership by physical bundle before augmentation or model training. Every view and time observation of a bundle follows its group. Honor the same group boundaries in Roboflow detector datasets and Random Forest datasets. Never use a final-test bundle to train the detector upstream of the classifier.
-
-Choose split sizes and stratification based on available independent groups and label coverage; do not invent a fixed sample count or guarantee balanced folds. Group-aware cross-validation may be used within training data when feasible. Keep a final held-out set separate from model selection. If sample coverage cannot support meaningful evaluation, report the limitation.
-
-Fit learned preprocessing only on training data. Exclude bundle/session IDs, labels, filenames, collection dates, and synthetic flags from predictive features. Detect exact/near duplicates and overlapping groups. Measure ripeness and spoilage separately; record support and missing classes rather than hiding them.
-
-## Feature registry
-
-The portable Phase 3 implementation establishes the following initial visual-only schema. It is an engineering baseline, not evidence that these values predict ripeness or spoilage. Training and runtime must use this exact implementation and verify `schema_version = visual-v1`; any change requires a new schema version and retraining.
-
-| Position | Name | Unit | Extraction and preprocessing |
-| --- | --- | --- | --- |
-| 1 | `hue_mean_deg` | degrees | Mean OpenCV HSV hue from an explicit BGR crop, multiplied by 2 (OpenCV hue range 0–179). |
-| 2 | `saturation_mean_fraction` | fraction | Mean HSV saturation divided by 255. |
-| 3 | `value_mean_fraction` | fraction | Mean HSV value divided by 255. |
-| 4 | `gray_stddev_fraction` | fraction | Population standard deviation of OpenCV grayscale intensity divided by 255. |
-| 5 | `laplacian_variance_normalized` | fraction_squared | Population variance of the `CV_64F` grayscale Laplacian, divided by 255². |
-
-Input must be a non-empty three-channel `uint8` BGR image (OpenCV convention) and a caller-supplied in-bounds integer `x,y,width,height` crop. The original image is not changed. There is no background removal, pixel mask, color correction, illumination normalization, crop expansion, detector output, feature fusion, or classifier in this slice. Hue's ordinary arithmetic mean is retained as a simple initial baseline; its circular-statistics limitations must be evaluated on real data before claiming it is suitable.
-
-### Multimodal fusion registry
-
-`multimodal-v1` appends the following values to `visual-v1` in exactly this order. The vector itself contains no IDs, timestamps, provenance fields, labels, filenames, configuration IDs, or calibration IDs.
+`visual-v1` takes a non-empty three-channel `uint8` BGR image and an explicit in-bounds `x,y,width,height` region. It does not select a region, remove background, mask pixels, correct color, or classify.
 
 | Position | Name | Unit | Rule |
-| --- | --- | --- | --- |
-| 1–5 | all `visual-v1` values | as above | Reused unchanged from the visual feature extractor. |
-| 6 | `gas_response_value` | supplied `gas_response_unit` | Finite raw gas-response summary. The unit is retained verbatim; no ethylene claim, normalization, or conversion occurs. |
-| 7 | `weight_g` | g | Finite non-negative bundle mass already supplied in grams; no unit conversion occurs. |
+| --- | --- | --- |
+| 1 | `hue_mean_deg` | degrees | Mean OpenCV HSV hue × 2. |
+| 2 | `saturation_mean_fraction` | fraction | Mean HSV saturation ÷ 255. |
+| 3 | `value_mean_fraction` | fraction | Mean HSV value ÷ 255. |
+| 4 | `gray_stddev_fraction` | fraction | Population grayscale standard deviation ÷ 255. |
+| 5 | `laplacian_variance_normalized` | fraction_squared | Population `CV_64F` grayscale Laplacian variance ÷ 255². |
 
-Fusion requires matching `acquisition_id`, `bundle_id`, and `is_synthetic` provenance across visual and sensor inputs. It requires timezone-aware visual capture and sensor-window timestamps, but deliberately applies no timing tolerance or capture/window inclusion rule because the protocol is pending. For real inputs, `hardware_config_id` and `calibration_id` are required metadata. Synthetic inputs remain marked with `synthetic_provenance` and are not training-eligible. An absence of synthetic blocking does not by itself establish that a real record is suitable for supervised training; manifest completeness, labels, splits, and research review still apply.
+`multimodal-v1` preserves positions 1–5, then appends:
 
-Record sensor normalization and calibration provenance when sensor fusion is specified. Reject incompatible models or feature schemas at inference.
+| Position | Name | Unit | Rule |
+| --- | --- | --- |
+| 6 | `gas_response_value` | supplied `gas_response_unit` | Finite raw response; no normalization or chemical conversion. |
+| 7 | `weight_g` | g | Finite non-negative mass already in grams. |
 
-Preserve raw files unchanged. Keep datasets outside source control and put small synthetic fixtures in a clearly named test location. Store real-data versions, file checksums, split assignments, and collection/calibration metadata in the controlled dataset handoff.
+Fusion requires matching acquisition ID, bundle ID, and provenance. It retains timestamps, provenance, hardware configuration, and calibration IDs as metadata outside the vector. It deliberately applies no capture/sensor timing tolerance. Any extractor/schema/unit change requires a new schema version and model retraining.
+
+## Model artifacts and evaluation
+
+No artifacts are supplied. Keep models outside Git and load only trusted artifacts. Each release records immutable ID, checksum, detector/classifier format, class mapping, ordered feature names/units/schema versions, preprocessing version, source dataset and split manifest, training parameters, software versions, and evaluation report.
+
+Pending team handoff: D06 supplies matched real images/sensor records and independent bundle counts; D07 supplies the Roboflow project/version, annotation/training ownership, and a Pi-compatible local detector artifact/runtime; D10 defines whether the proposed 95% target applies to each output, combined success, or another measure. Do not select a detector runtime or train a classifier until those inputs are available.
+
+Evaluate detector and classifier separately on held-out real bundles. Report detector precision/recall and specified mAP/IoU convention; ripeness accuracy, macro precision/recall/F1, per-stage support, and confusion matrix; spoilage accuracy, precision/recall/F1 with Spoiled positive, support, and confusion matrix; and end-to-end failures/timing. Record excluded scans and unique bundle counts. Do not claim the proposed 95% target without the agreed held-out evaluation.
