@@ -62,6 +62,18 @@ The portable Phase 3 implementation establishes the following initial visual-onl
 
 Input must be a non-empty three-channel `uint8` BGR image (OpenCV convention) and a caller-supplied in-bounds integer `x,y,width,height` crop. The original image is not changed. There is no background removal, pixel mask, color correction, illumination normalization, crop expansion, detector output, feature fusion, or classifier in this slice. Hue's ordinary arithmetic mean is retained as a simple initial baseline; its circular-statistics limitations must be evaluated on real data before claiming it is suitable.
 
+### Multimodal fusion registry
+
+`multimodal-v1` appends the following values to `visual-v1` in exactly this order. The vector itself contains no IDs, timestamps, provenance fields, labels, filenames, configuration IDs, or calibration IDs.
+
+| Position | Name | Unit | Rule |
+| --- | --- | --- | --- |
+| 1–5 | all `visual-v1` values | as above | Reused unchanged from the visual feature extractor. |
+| 6 | `gas_response_value` | supplied `gas_response_unit` | Finite raw gas-response summary. The unit is retained verbatim; no ethylene claim, normalization, or conversion occurs. |
+| 7 | `weight_g` | g | Finite non-negative bundle mass already supplied in grams; no unit conversion occurs. |
+
+Fusion requires matching `acquisition_id`, `bundle_id`, and `is_synthetic` provenance across visual and sensor inputs. It requires timezone-aware visual capture and sensor-window timestamps, but deliberately applies no timing tolerance or capture/window inclusion rule because the protocol is pending. For real inputs, `hardware_config_id` and `calibration_id` are required metadata. Synthetic inputs remain marked with `synthetic_provenance` and are not training-eligible. An absence of synthetic blocking does not by itself establish that a real record is suitable for supervised training; manifest completeness, labels, splits, and research review still apply.
+
 Record sensor normalization and calibration provenance when sensor fusion is specified. Reject incompatible models or feature schemas at inference.
 
 Preserve raw files unchanged. Keep datasets outside source control and put small synthetic fixtures in a clearly named test location. Store real-data versions, file checksums, split assignments, and collection/calibration metadata in the controlled dataset handoff.

@@ -17,6 +17,7 @@ config/*.local.toml
 config/hardware.toml
 config/calibration*.toml
 runs/
+captures/
 logs/
 artifacts/
 data/raw/

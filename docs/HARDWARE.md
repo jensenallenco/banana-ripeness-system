@@ -35,3 +35,9 @@ The team must establish MQ conditioning/warm-up, clean-chamber baseline, samplin
 For each device check, send the Git commit, OS/Python/architecture, hardware configuration ID, calibration ID, exact command, sanitized log/traceback, and applicable photo/result. Do not send passwords or access keys in logs. Secure private remote access is optional; executing commands locally and returning evidence is sufficient.
 
 Approve the wiring and verify components independently before activating the integrated hardware workflow. A Mac-only test does not establish GPIO or sensor correctness.
+
+## Desktop camera handoff
+
+The desktop screen is available through `banana-system desktop`, but its Capture control remains disabled until the camera information in D01 is supplied. To implement and verify the Pi adapter, provide the exact model, Pi OS/Python/architecture, a known-good test image, and the existing working camera command or code with its required package/install steps and capture settings. Do not send credentials.
+
+After an adapter is implemented from that evidence, launch `.venv/bin/banana-system desktop --capture-directory captures`. Confirm camera status, one newly saved image, the preview, and the path displayed by the UI. The screen intentionally reports sensors/model as unavailable and must not be used to claim a measurement or prediction.

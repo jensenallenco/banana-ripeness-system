@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 from pathlib import Path
 
 import cv2
@@ -10,8 +11,11 @@ import cv2
 from .acquisition import SyntheticFixtureAcquisition
 from .collection import replay_records, validate_manifest
 from .config import ConfigurationError, load_config
+from .contracts import Provenance
 from .detection import BananaRegion, RegionValidationError
+from .desktop import ImageLoadError, run_desktop
 from .features import VISUAL_FEATURE_SCHEMA, extract_visual_features
+from .fusion import MatchedSensorMeasurements, VisualObservation, fuse_multimodal_features
 from .orchestrator import ScanOrchestrator
 from .presentation import ConsolePresenter
 
@@ -29,6 +33,14 @@ def main() -> int:
     features_parser.add_argument("action", choices=["extract", "schema"])
     features_parser.add_argument("--image", type=Path)
     features_parser.add_argument("--region", help="Pixel region as x,y,width,height; required for extract.")
+    fusion_parser = subparsers.add_parser("fusion", help="run the documented synthetic fusion demonstration; never predicts")
+    fusion_parser.add_argument("action", choices=["demo"])
+    fusion_parser.add_argument("--manifest", type=Path, default=Path("data/fixtures/synthetic/observations.csv"))
+    fusion_parser.add_argument("--dataset-root", type=Path)
+    fusion_parser.add_argument("--region", default="0,0,1,1")
+    desktop_parser = subparsers.add_parser("desktop", help="open the image capture/preview desktop screen")
+    desktop_parser.add_argument("--capture-directory", type=Path, default=Path("captures"))
+    desktop_parser.add_argument("--image", type=Path, help="open an existing photograph when the screen starts")
     args = parser.parse_args()
     if args.command == "collection":
         report = validate_manifest(args.manifest, args.dataset_root)
@@ -66,12 +78,61 @@ def main() -> int:
             print(f"{name}: {value:.12g}")
         print("provenance: input image only; detection=not_run predictions=none")
         return 0
+    if args.command == "fusion":
+        report = validate_manifest(args.manifest, args.dataset_root)
+        if not report.is_valid or len(report.records) != 1:
+            parser.error("fusion demo requires one collection-valid fixture record")
+        record = report.records[0]
+        if not record.is_synthetic:
+            parser.error("fusion demo only accepts an explicitly synthetic fixture record")
+        try:
+            coordinates = tuple(int(value) for value in args.region.split(","))
+            if len(coordinates) != 4:
+                raise ValueError
+            image = cv2.imread(str(record.image_file), cv2.IMREAD_COLOR)
+            if image is None:
+                parser.error(f"unable to read image: {record.image_file}")
+            values = record.values
+            visual = VisualObservation(
+                values["acquisition_id"], values["bundle_id"], _parse_manifest_utc(values["captured_at_utc"]),
+                Provenance.SYNTHETIC,
+                extract_visual_features(image, BananaRegion(*coordinates)),
+            )
+            sensors = MatchedSensorMeasurements(
+                values["acquisition_id"], values["bundle_id"], _parse_manifest_utc(values["sensor_window_start_utc"]),
+                _parse_manifest_utc(values["sensor_window_end_utc"]), visual.provenance,
+                float(values["gas_response_value"]), values["gas_response_unit"], float(values["weight_g"]), "g",
+                values["hardware_config_id"] or None, values["calibration_id"] or None,
+            )
+            vector = fuse_multimodal_features(visual, sensors)
+        except (ValueError, RegionValidationError) as exc:
+            parser.error(f"invalid fusion input: {exc}")
+        print(f"schema_version: {vector.schema_version}")
+        print(f"visual_schema_version: {vector.visual_schema_version}")
+        for name, value in vector.as_mapping().items():
+            print(f"{name} [{vector.unit_mapping()[name]}]: {value:.12g}")
+        print(f"acquisition_id: {vector.acquisition_id}")
+        print(f"bundle_id: {vector.bundle_id}")
+        print(f"provenance: {vector.provenance}")
+        print(f"training_ineligibility: {','.join(vector.training_ineligibility_reasons) or 'not_determined'}")
+        print("detection=not_run predictions=none")
+        return 0
+    if args.command == "desktop":
+        try:
+            run_desktop(args.capture_directory, args.image)
+        except (RuntimeError, ImageLoadError) as exc:
+            parser.error(str(exc))
+        return 0
     try:
         config = load_config(args.config)
     except ConfigurationError as exc:
         parser.error(str(exc))
     outcome = ScanOrchestrator(config, SyntheticFixtureAcquisition(), ConsolePresenter()).scan()
     return 0 if outcome.status.value in {"unavailable", "ok"} else 1
+
+
+def _parse_manifest_utc(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 if __name__ == "__main__":

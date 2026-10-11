@@ -57,6 +57,33 @@ The validator intentionally does not set an acquisition timing tolerance, gas-re
 
 D07 still blocks detector selection, serialization, artifact loading, local runtime compatibility, class handling, confidence convention, and real region validation. D05–D06 still block feature selection/evaluation against approved labels and matched observations. The team must also establish whether lighting/color correction or a crop/mask policy is required before research use. No feature values from synthetic fixtures are experimental results.
 
+## Portable Phase 3 fusion decisions (2026-10-10)
+
+| Decision | Rationale and affected scope |
+| --- | --- |
+| Create `multimodal-v1` as `visual-v1` values followed by raw gas response and mass in grams. | Gives future training and inference one explicit order without mixing identifiers or provenance into predictive features. |
+| Preserve the supplied gas-response unit as vector metadata and require `weight_unit = "g"`. | The team has not supplied a gas calibration/unit conversion or a general unit-conversion policy. Fusion must reject incompatible mass units rather than silently transform them. |
+| Require matching acquisition/bundle IDs and provenance, but do not compare capture time against the sensor window beyond timestamp validity. | Identity matching is available now; timing tolerance and sensor aggregation are protocol-dependent and remain open. |
+| Require hardware/calibration IDs for real sensor inputs, while allowing their absence for explicitly synthetic fixtures. | Synthetic development data must remain runnable and visibly ineligible for training; it cannot imply a physical calibration. |
+
+## Fusion unresolved dependencies
+
+D03–D05 remain necessary to choose the approved gas-response unit/aggregation, calibration record requirements, sensor-window alignment/tolerance, weight workflow, and label protocol. D06 is necessary to evaluate whether `visual-v1`/`multimodal-v1` are suitable on real grouped data. A future model artifact must record and validate the exact gas unit, feature names/order, and schema versions before prediction.
+
+## Desktop camera decisions (2026-10-12)
+
+| Decision | Rationale and affected scope |
+| --- | --- |
+| Use a small Tk desktop screen with OpenCV decoding for image preview. | Supports local image development without adding a GUI framework or mixing presentation with camera/feature logic. |
+| Keep the camera behind `CameraAdapter` and select only an explicit unavailable adapter today. | No confirmed Pi OS/camera model, working command, or team code exists in this repository. This prevents a fabricated camera integration or mock image capture. |
+| Show Capture but disable it while the camera adapter is unavailable. | Makes the intended workflow visible while accurately communicating the dependency; opening an existing photograph remains usable independently. |
+| Use timestamped `.jpg` destinations inside an ignored `captures/` directory for future capture adapters. | Avoids overwriting earlier captures. The current unavailable adapter creates no image. |
+| Install the matching Homebrew `python-tk@3.14` binding for the active Python 3.14 interpreter. | Resolves the missing `_tkinter` module without changing the project's supported Python range or Python package dependencies. |
+
+## Desktop camera blocker
+
+D01 remains unresolved. The team must provide the actual Pi camera evidence and working code/command before a hardware adapter can be selected, implemented, or verified. The current UI's unavailable state is intentional and must not be interpreted as camera support.
+
 ## Team questions and dependent work
 
 | ID | Missing answer | Owner | Blocks |

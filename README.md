@@ -1,6 +1,6 @@
 # Cavendish Banana Ripeness and Spoilage System
 
-Portable Phases 1–2 plus the portable image-processing slice of Phase 3 for the Raspberry Pi research prototype. It includes a typed Python scan workflow, validated development configuration, explicit synthetic fixtures, console presentation, non-mutating dataset-manifest validation/replay, and versioned OpenCV region feature extraction. It does **not** contain trained detector/classifier inference or validated hardware drivers.
+Portable Phases 1–2 plus the visual-feature and sensor-fusion slices of Phase 3 for the Raspberry Pi research prototype. It includes a typed Python scan workflow, validated development configuration, explicit synthetic fixtures, console presentation, non-mutating dataset-manifest validation/replay, versioned OpenCV region feature extraction, and strict multimodal fusion. It does **not** contain trained detector/classifier inference or validated hardware drivers.
 
 The research workflow is camera capture → banana-bundle detection using a Roboflow-trained model → OpenCV color and texture features → fusion with MQ-135 gas response and load-cell weight → Scikit-learn Random Forest → Stage 1–7 and Good/Spoiled outputs. Inference must run locally on a Raspberry Pi 4.
 
@@ -44,13 +44,30 @@ The research workflow is camera capture → banana-bundle detection using a Robo
 
    `visual-v1` outputs ordered color/texture values from the provided BGR region only. It prints `detection=not_run predictions=none`; the synthetic input is not a research result.
 
-7. Run the contracts:
+7. Run the synthetic multimodal fusion demonstration:
+
+   ```sh
+   .venv/bin/banana-system fusion demo
+   ```
+
+   This validates the synthetic fixture, extracts `visual-v1`, and returns ordered `multimodal-v1` values. It retains synthetic provenance, reports `training_ineligibility: synthetic_provenance`, and prints `predictions=none`.
+
+8. Run the contracts:
 
    ```sh
    .venv/bin/python -m pytest
    ```
 
-8. Ask the research team for the items in [docs/HARDWARE.md](docs/HARDWARE.md) and [docs/DECISIONS.md](docs/DECISIONS.md) while independent software work proceeds.
+9. Launch the desktop image-preview screen. It loads existing photographs on macOS and has no sensor/model dependency:
+
+   ```sh
+   .venv/bin/python -c 'import tkinter; print(tkinter.TkVersion)'
+   .venv/bin/banana-system desktop --image /path/to/development-photo.jpg
+   ```
+
+   The first command checks that the selected Python distribution includes Tk. Homebrew Python installations may require the matching `python-tk` formula. Use **Open photograph** or `--image` to load a local image; its original file is not copied or analyzed. The screen shows the file location and planned capture destination.
+
+10. Ask the research team for the items in [docs/HARDWARE.md](docs/HARDWARE.md) and [docs/DECISIONS.md](docs/DECISIONS.md) while independent software work proceeds.
 
 ## Repository guide
 
@@ -89,5 +106,13 @@ The development adapter is deliberately the only runnable adapter. It provides o
 ## Portable visual-feature boundary
 
 `features extract` requires an existing image and caller-provided `x,y,width,height` region. It validates a non-empty `uint8` BGR image and in-bounds integer region before extracting the versioned `visual-v1` vector. It does not include a detector, choose a banana region, return confidence, invoke a model, or classify anything. See [docs/DATASET.md](docs/DATASET.md) for the exact ordered feature registry.
+
+## Portable sensor-fusion boundary
+
+`fusion demo` uses the validated synthetic collection fixture to combine `visual-v1` values with the fixture's gas response and mass. `multimodal-v1` has a fixed order; gas units are retained as supplied and weight must already be in grams. Identity, timestamps, provenance, hardware configuration, and calibration IDs remain outside predictive values. No calibration, unit conversion, timing tolerance, detection, or prediction is applied.
+
+## Desktop image-capture boundary
+
+`banana-system desktop` is the first desktop screen: image preview, **Open photograph**, **Capture**, camera status, component availability, and source/capture locations. On a Mac it supports opening an existing local photograph for development without creating measurements or predictions. The Capture button is deliberately disabled until a confirmed Pi camera adapter exists. This repository contains no team camera code or confirmed OS/camera setup, so it cannot safely choose Picamera2, a command-line tool, settings, or a camera model on the team’s behalf. See [docs/HARDWARE.md](docs/HARDWARE.md) for the Pi handoff and verification procedure.
 
 No remote Git host has been configured. The ZIP is a portable starter; initialize Git after extraction if necessary. No software license has been selected; confirm ownership and sharing terms before public release.

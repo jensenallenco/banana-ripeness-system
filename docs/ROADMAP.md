@@ -1,6 +1,6 @@
 # Implementation roadmap
 
-Phases 0 and 1 are complete. The portable manifest/replay portion of Phase 2 and explicit-region visual-feature portion of Phase 3 are complete; hardware- and model-dependent work remains planned.
+Phases 0 and 1 are complete. The portable manifest/replay and desktop image-preview portions of Phase 2, plus explicit-region visual-feature/sensor-fusion portions of Phase 3, are complete; hardware- and model-dependent work remains planned.
 
 ## Phase 0 — Repository brief
 
@@ -22,13 +22,17 @@ Complete when the team demonstrates matched real images/readings with valid iden
 
 Portable portion completed 2026-10-09: added a non-mutating CSV manifest validator, synthetic manifest/image/trace fixture, and model-free validation/replay CLI. It validates identifiers, relative existing input paths, UTC timestamps, finite sensor values, units, labels, and explicit provenance; it permits blank labels for collection and reports records unsuitable for supervised training. The synthetic replay prints `predictions=none`. This does not complete Phase 2: real collection adapters, component diagnostics, confirmed calibration handling, and team demonstration of matched real observations remain blocked by D01–D05 and real hardware/data handoff.
 
+Desktop preview slice completed 2026-10-12: added a Tk image-preview screen with Open photograph, Capture, camera/model/sensor availability states, and source/capture locations. Development images load without copying or analysis; capture has no sensor or model dependency. The repository has no confirmed Pi camera setup or supplied working camera code, so Capture is explicitly disabled rather than simulated. This does not complete Phase 2: a real camera adapter, real capture verification, component diagnostics, confirmed calibration handling, and team demonstration of matched real observations remain blocked by D01–D05.
+
 ## Phase 3 — Local detection and visual features
 
 Integrate the trained detector after format/runtime selection. Implement and version the color/texture feature extractor and fusion rules. Validate detection/crops and document multi-bundle/no-bundle handling.
 
 Complete when a supplied model executes locally, visual extraction is repeatable, and training/runtime share the same ordered feature schema. Benchmark on Pi before selecting a deployment runtime as final.
 
-Portable slice completed 2026-10-09: added the detector interface (without a detector implementation), validated explicit banana-region contract, and OpenCV `visual-v1` extraction with an ordered, documented color/texture schema. Synthetic-image tests verify deterministic region-only behavior and invalid-input rejection. The CLI can display the schema and extract values from a caller-provided region while reporting `detection=not_run predictions=none`. This does not complete Phase 3: a trained detector artifact/runtime, real detection/crop validation, feature evaluation on real data, sensor fusion, and Pi benchmarks remain blocked by D06–D07 and hardware/data handoff.
+Portable visual slice completed 2026-10-09: added the detector interface (without a detector implementation), validated explicit banana-region contract, and OpenCV `visual-v1` extraction with an ordered, documented color/texture schema. Synthetic-image tests verify deterministic region-only behavior and invalid-input rejection. The CLI can display the schema and extract values from a caller-provided region while reporting `detection=not_run predictions=none`.
+
+Portable fusion slice completed 2026-10-10: added `multimodal-v1` fusion with fixed visual/gas/weight ordering, strict acquisition/provenance matching, explicit gas/weight units, finite-value checks, and separate metadata. The synthetic CLI demonstration remains training-ineligible and prints `predictions=none`. This does not complete Phase 3: a trained detector artifact/runtime, real detection/crop validation, feature evaluation on real data, protocol-confirmed sensor alignment/calibration rules, and Pi benchmarks remain blocked by D03–D07 and hardware/data handoff.
 
 ## Phase 4 — Supervised training and evaluation
 
