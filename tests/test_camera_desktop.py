@@ -15,7 +15,7 @@ from banana_system.camera import (
     Picamera2CameraAdapter,
     UnavailableCameraAdapter,
 )
-from banana_system.desktop import ImageLoadError, load_preview_image, preview_ppm_data
+from banana_system.desktop import ImageLoadError, load_preview_image, preview_png_data
 
 
 def test_unavailable_camera_never_simulates_or_writes_a_capture(tmp_path: Path) -> None:
@@ -36,10 +36,10 @@ def test_existing_synthetic_photo_loads_without_changing_source() -> None:
     assert source.read_bytes() == original
 
 
-def test_preview_data_is_a_tk_compatible_ppm_payload_and_scales() -> None:
+def test_preview_data_is_a_tk_compatible_png_payload_and_scales() -> None:
     image = np.full((1000, 2000, 3), 127, dtype=np.uint8)
-    ppm = base64.b64decode(preview_ppm_data(image, max_width=200, max_height=200))
-    decoded = cv2.imdecode(np.frombuffer(ppm, dtype=np.uint8), cv2.IMREAD_COLOR)
+    png = base64.b64decode(preview_png_data(image, max_width=200, max_height=200))
+    decoded = cv2.imdecode(np.frombuffer(png, dtype=np.uint8), cv2.IMREAD_COLOR)
     assert decoded.shape[:2] == (100, 200)
 
 

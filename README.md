@@ -59,6 +59,34 @@ PYTHONPATH=src python3 -m banana_system.cli desktop --capture-directory captures
 
 The adapter configures an 800×480 still stream and requests `ExposureTime=8333` µs with auto-exposure disabled. The request is not a guarantee: after each capture the screen reports `ExposureTime` from Picamera2 metadata, or `not reported`. The supplied reference's `BGR888` naming is not used for raw OpenCV arrays here: Picamera2 writes the JPEG and OpenCV reloads it as BGR, avoiding an unverified raw-channel swap.
 
+### Pi team handoff
+
+Use branch `main` from the repository below. For a new checkout:
+
+```sh
+git clone https://github.com/jensenallenco/banana-ripeness-system.git
+cd banana-ripeness-system
+git switch main
+```
+
+To update an existing checkout, from its root:
+
+```sh
+git fetch origin
+git switch main
+git pull --ff-only origin main
+```
+
+Check the supplied system environment, then launch without replacing the distribution-managed camera stack:
+
+```sh
+python3 --version
+python3 -c 'import platform; from picamera2 import Picamera2; import cv2; print(platform.platform()); print("camera stack available")'
+PYTHONPATH=src python3 -m banana_system.cli desktop --capture-directory captures
+```
+
+Expected Pi acceptance: Capture saves a unique JPEG under `captures/`, previews that saved JPEG, displays its exact location, and supports consecutive captures. Closing the application releases its camera session. These are device acceptance steps, not claims of completed Pi verification.
+
 ## Architecture
 
 | Area | Current responsibility |

@@ -35,13 +35,13 @@ def load_preview_image(path: Path) -> PreviewImage:
     return PreviewImage(path, image)
 
 
-def preview_ppm_data(image: NDArray[np.uint8], max_width: int = 900, max_height: int = 520) -> str:
-    """Convert BGR pixels to Tk-compatible PPM data, retaining aspect ratio."""
+def preview_png_data(image: NDArray[np.uint8], max_width: int = 760, max_height: int = 250) -> str:
+    """Convert BGR pixels to Tk-compatible PNG data, retaining aspect ratio."""
     height, width = image.shape[:2]
     scale = min(max_width / width, max_height / height, 1.0)
     if scale < 1.0:
         image = cv2.resize(image, (round(width * scale), round(height * scale)), interpolation=cv2.INTER_AREA)
-    ok, encoded = cv2.imencode(".ppm", image)
+    ok, encoded = cv2.imencode(".png", image)
     if not ok:
         raise ImageLoadError("could not prepare image preview")
     return base64.b64encode(encoded.tobytes()).decode("ascii")
@@ -155,7 +155,7 @@ class DesktopApplication:
         return f"Captured JPEG. Requested exposure: {result.requested_exposure_us} µs; camera metadata: {actual}."
 
     def _show_image(self, preview: PreviewImage, captured: bool) -> None:
-        self._preview_photo = self._tk.PhotoImage(data=preview_ppm_data(preview.bgr), format="PPM")
+        self._preview_photo = self._tk.PhotoImage(data=preview_png_data(preview.bgr), format="PNG")
         self._preview_label.configure(image=self._preview_photo, text="")
         self._image_path = preview.source_path
         self._image_location.set(f"Image location: {preview.source_path}")

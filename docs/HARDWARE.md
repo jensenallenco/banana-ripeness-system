@@ -29,13 +29,28 @@ Gas output remains a gas-response value unless a verified conversion is supplied
 
 ## Pi desktop/camera verification
 
-Use the team-installed camera stack with the Pi's system Python. From the repository root, first verify the required imports, then launch directly from `src`:
+Target: Debian 13 (Trixie) 64-bit, system Python 3.13.5, Raspberry Pi Camera Module 3 Wide. Use the team-installed camera stack with the Pi's system Python. Get or update branch `main` from `https://github.com/jensenallenco/banana-ripeness-system.git`:
 
 ```sh
-python3 -c 'from picamera2 import Picamera2; import cv2; print("camera stack available")'
+# New checkout
+git clone https://github.com/jensenallenco/banana-ripeness-system.git
+cd banana-ripeness-system
+git switch main
+
+# Existing checkout
+git fetch origin
+git switch main
+git pull --ff-only origin main
+```
+
+From the repository root, verify the required environment, then launch directly from `src`:
+
+```sh
+python3 --version
+python3 -c 'import platform; from picamera2 import Picamera2; import cv2; print(platform.platform()); print("camera stack available")'
 PYTHONPATH=src python3 -m banana_system.cli desktop --capture-directory captures
 ```
 
 This is intentionally not a hardware fallback: if Picamera2 or a camera is unavailable, Capture is disabled and the existing-photo workflow remains available. The adapter configures a still stream at 800×480, requests `AeEnable=False` and `ExposureTime=8333`, writes a unique JPEG, then the desktop previews that saved JPEG and displays its path. `8333` µs is a requested control only; record the `ExposureTime` value reported in capture metadata, or its absence.
 
-For acceptance on the Pi, verify: camera status is available; Capture writes a new timestamped image under `captures/`; preview and displayed saved location match; repeated clicks cannot start concurrent captures; camera-unavailable/busy and capture-failure messages are explicit; closing the window releases the camera; opening an existing image still works; sensors and model remain explicitly unavailable; and no prediction is shown. Use a color reference photograph or chart to confirm the saved JPEG has expected colors. Record commit, OS/Python/architecture, camera model, configuration/calibration IDs, command, output path, reported exposure metadata, and sanitized errors.
+For acceptance on the Pi, verify: camera status is available; each Capture writes a distinct timestamped JPEG under `captures/`; preview and displayed saved location match; repeated captures work without concurrent captures; camera-unavailable/busy and capture-failure messages are explicit; closing the window releases the camera; opening an existing image still works; sensors and model remain explicitly unavailable; and no prediction is shown. Use a color reference photograph or chart to confirm the saved JPEG has expected colors. Record commit, OS/Python/architecture, camera model, configuration/calibration IDs, command, output path, reported exposure metadata, and sanitized errors. This remains pending device verification.
