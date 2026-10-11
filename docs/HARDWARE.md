@@ -6,7 +6,7 @@ The research team owns assembly, wiring, calibration, electrical checks, and on-
 
 | ID | Team must provide | Blocks |
 | --- | --- | --- |
-| D01 | Pi RAM, storage, OS/version/architecture, Python, power; camera model, known-good image, working capture command/code, required packages, resolution, and exposure/focus/white-balance settings. | Camera adapter and device dependency selection. |
+| D01 | Confirmed for the camera slice: Debian 13 (Trixie) 64-bit, system Python 3.13.5, Raspberry Pi Camera Module 3 Wide, Picamera2 reference code, 800×480 UI, and a requested 8333 µs exposure. Still provide Pi RAM/storage/power, a known-good device capture, focus/white-balance policy, and final package inventory. | On-device acceptance and reproducible device configuration. |
 | D02 | Wiring diagram, physical pins and BCM numbers, active levels, pull configuration, and verified interfaces for button, LED, buzzer, and display. | GPIO and output adapters. |
 | D03 | MQ-135 module/datasheet, ADC/interface, reference/input range, electrical compatibility, warm-up/baseline/reset process. | Gas acquisition. |
 | D04 | Load-cell capacity/mounting/wiring; HX711 model, pins, gain/rate, tare, known-weight calibration, raw readings, and acceptable behavior. | Weight acquisition and fusion acceptance. |
@@ -29,12 +29,13 @@ Gas output remains a gas-response value unless a verified conversion is supplied
 
 ## Pi desktop/camera verification
 
-The current desktop command is:
+Use the team-installed camera stack with the Pi's system Python. From the repository root, first verify the required imports, then launch directly from `src`:
 
 ```sh
-.venv/bin/banana-system desktop --capture-directory captures
+python3 -c 'from picamera2 import Picamera2; import cv2; print("camera stack available")'
+PYTHONPATH=src python3 -m banana_system.cli desktop --capture-directory captures
 ```
 
-Today it correctly shows Camera unavailable and disables Capture because D01 is unresolved. It can still open a local image for preview.
+This is intentionally not a hardware fallback: if Picamera2 or a camera is unavailable, Capture is disabled and the existing-photo workflow remains available. The adapter configures a still stream at 800×480, requests `AeEnable=False` and `ExposureTime=8333`, writes a unique JPEG, then the desktop previews that saved JPEG and displays its path. `8333` µs is a requested control only; record the `ExposureTime` value reported in capture metadata, or its absence.
 
-After the team supplies D01 and a camera adapter is implemented, verify on the Pi: camera status is available; Capture writes a new timestamped image under `captures/`; preview and displayed saved location match; opening an existing image still works; sensors and model remain explicitly unavailable; and no prediction is shown. Record commit, OS/Python/architecture, camera model, configuration/calibration IDs, command, output path, and sanitized errors.
+For acceptance on the Pi, verify: camera status is available; Capture writes a new timestamped image under `captures/`; preview and displayed saved location match; repeated clicks cannot start concurrent captures; camera-unavailable/busy and capture-failure messages are explicit; closing the window releases the camera; opening an existing image still works; sensors and model remain explicitly unavailable; and no prediction is shown. Use a color reference photograph or chart to confirm the saved JPEG has expected colors. Record commit, OS/Python/architecture, camera model, configuration/calibration IDs, command, output path, reported exposure metadata, and sanitized errors.

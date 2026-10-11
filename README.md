@@ -2,7 +2,7 @@
 
 Local research prototype for Cavendish banana bundles on Raspberry Pi 4. The intended pipeline is camera capture → local bundle detection → OpenCV visual features → gas-response and mass fusion → Scikit-learn Random Forest outputs for Stage 1–7 and Good/Spoiled. Detection and classification remain separate.
 
-The repository is usable for Mac development without GPIO, a camera, sensors, models, or real data. It does not contain a trained detector/classifier, a real Pi camera adapter, or research results.
+The repository is usable for Mac development without GPIO, a camera, sensors, models, or real data. It does not contain a trained detector/classifier or research results.
 
 ## Install
 
@@ -46,14 +46,25 @@ Homebrew Python may need the matching `python-tk` formula.
 .venv/bin/python -m pytest
 ```
 
-The desktop screen can open existing local photographs without copying or analyzing them. It shows the image location and a future capture destination. Camera Capture is disabled until the team supplies a confirmed Pi camera setup; sensors and model output remain unavailable by design.
+The desktop screen can open existing local photographs without copying or analyzing them. On a Pi with the confirmed Picamera2 stack, it initializes the camera, captures a unique UTC-named JPEG under `--capture-directory`, reloads that saved file for preview, and shows its location. On a Mac or an unavailable/busy camera it remains usable for photo preview and shows an explicit camera state. Sensors and model output remain unavailable by design.
+
+### Pi camera launch
+
+The confirmed target is Debian 13 (Trixie) 64-bit, system Python 3.13.5, and Raspberry Pi Camera Module 3 Wide. Keep the team-installed Picamera2/libcamera stack attached to that system Python; do not add Picamera2 as a cross-platform project dependency. From a checkout whose system Python can import both `picamera2` and `cv2`:
+
+```sh
+python3 -c 'from picamera2 import Picamera2; import cv2; print("camera stack available")'
+PYTHONPATH=src python3 -m banana_system.cli desktop --capture-directory captures
+```
+
+The adapter configures an 800×480 still stream and requests `ExposureTime=8333` µs with auto-exposure disabled. The request is not a guarantee: after each capture the screen reports `ExposureTime` from Picamera2 metadata, or `not reported`. The supplied reference's `BGR888` naming is not used for raw OpenCV arrays here: Picamera2 writes the JPEG and OpenCV reloads it as BGR, avoiding an unverified raw-channel swap.
 
 ## Architecture
 
 | Area | Current responsibility |
 | --- | --- |
 | `config`, `contracts`, `orchestrator` | Validated development mode, typed outcomes, cancellation, cleanup, explicit unavailable results. |
-| `acquisition`, `camera`, `desktop`, `presentation` | Synthetic acquisition, camera boundary, desktop preview, and console UI. Hardware adapters are not implemented. |
+| `acquisition`, `camera`, `desktop`, `presentation` | Synthetic acquisition, optional Picamera2 capture, desktop preview, and console UI. |
 | `collection` | Non-mutating CSV manifest validation and replay. |
 | `detection` | Detector and banana-region contracts only; no detector implementation. |
 | `features` | OpenCV `visual-v1` extraction from an explicit BGR region. |
@@ -63,8 +74,8 @@ Identity, timestamps, provenance, hardware configuration, and calibration IDs ar
 
 ## Current capabilities and remaining work
 
-Implemented: portable configuration, synthetic scan behavior, desktop image preview, collection validation/replay, explicit-region visual features, and multimodal fusion.
+Implemented: portable configuration, synthetic scan behavior, desktop photo preview and Picamera2 JPEG capture, collection validation/replay, explicit-region visual features, and multimodal fusion.
 
-Still required: confirmed Pi camera and sensor interfaces; camera capture adapter; detector artifact/runtime; labels and matched real observations; model training/evaluation; model artifact loading; physical display/indicator behavior; and Pi/offline validation. See [docs/HARDWARE.md](docs/HARDWARE.md) and [docs/DATASET.md](docs/DATASET.md).
+Still required: on-device camera acceptance; confirmed sensor interfaces; detector artifact/runtime; labels and matched real observations; model training/evaluation; model artifact loading; physical display/indicator behavior; and Pi/offline validation. See [docs/HARDWARE.md](docs/HARDWARE.md) and [docs/DATASET.md](docs/DATASET.md).
 
 Synthetic fixtures are software tests only. They are marked synthetic, remain ineligible for supervised research training, and never establish performance or food-safety claims.
