@@ -24,3 +24,4 @@ Build a small local Python application for the Cavendish banana research prototy
 - Preserve raw images/traces and keep datasets, models, credentials, logs, captures, and machine-specific configuration out of Git.
 - Run relevant checks after changes, normally `.venv/bin/python -m pytest`. State what ran and distinguish Mac checks from Pi/device and research validation.
 - Update README, HARDWARE, or DATASET documentation when behavior, contracts, decisions, or dependencies change.
+- Whenever implementation changes capabilities, dependencies, commands, or setup, update the relevant existing documentation in the same change; keep it brief and do not create additional Markdown files.
